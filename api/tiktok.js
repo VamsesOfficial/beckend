@@ -20,7 +20,7 @@ export default async function handler(req, res) {
       }
     });
 
-    const json = await a.json();
+    const json = await apiURL.json();
     res.status(200).json(json);
   } catch (err) {
     console.log(err);
