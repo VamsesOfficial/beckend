@@ -5,12 +5,11 @@ import serverless from "serverless-http";
 
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Endpoint TikTok Downloader
-app.get("/api/tiktok", async (req, res) => {
+// WAJIB: jangan pakai /api disini!
+app.get("/tiktok", async (req, res) => {
   try {
     const { url } = req.query;
 
@@ -21,10 +20,9 @@ app.get("/api/tiktok", async (req, res) => {
       });
     }
 
-    // Request ke API TikTok Downloader
     const response = await axios.get("https://tikwm.com/api/", {
       params: {
-        url: url,
+        url,
         hd: 1,
       },
       headers: {
@@ -34,6 +32,20 @@ app.get("/api/tiktok", async (req, res) => {
         Referer: "https://tikwm.com/",
       },
     });
+
+    res.json(response.data);
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Gagal mengambil data dari API",
+      error: err.message,
+    });
+  }
+});
+
+// WAJIB
+export const handler = serverless(app);
+export default handler;
 
     res.json(response.data);
   } catch (error) {
