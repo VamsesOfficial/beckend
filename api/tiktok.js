@@ -1,26 +1,13 @@
-import express from "express";
-import cors from "cors";
-import axios from "axios";
-import serverless from "serverless-http";
+import fetch from "node-fetch";
 
-const app = express();
+export default async function handler(req, res) {
+  const url = req.query.url;
 
-app.use(cors());
-app.use(express.json());
+  if (!url)
+    return res.status(400).json({ code: 400, msg: "URL tidak boleh kosong" });
 
-// IMPORTANT: jangan pakai /api di sini
-app.get("/tiktok", async (req, res) => {
   try {
-    const { url } = req.query;
-
-    if (!url) {
-      return res.status(400).json({
-        success: false,
-        message: "URL TikTok diperlukan"
-      });
-    }
-
-    const response = await axios.get("https://tikwm.com/api/", {
+    const apiURL = await axios.get("https://tikwm.com/api/", {
       params: {
         url,
         hd: 1
@@ -33,16 +20,10 @@ app.get("/tiktok", async (req, res) => {
       }
     });
 
-    return res.json(response.data);
+    const json = await a.json();
+    res.status(200).json(json);
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Gagal mengambil data dari API",
-      error: err.message
-    });
+    console.log(err);
+    res.status(500).json({ code: 500, msg: "Gagal mengambil data dari API" });
   }
-});
-
-// WAJIB untuk serverless vercel
-export const handler = serverless(app);
-export default handler;
+}
