@@ -20,8 +20,8 @@ export default async function handler(req, res) {
       }
     });
 
-    const json = await apiURL.json();
-    res.status(200).json(json);
+    // axios response ada di apiURL.data
+    res.status(200).json(apiURL.data);
   } catch (err) {
     console.log(err);
     res.status(500).json({ code: 500, msg: "Gagal mengambil data dari API" });
