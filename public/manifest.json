@@ -1,22 +1,26 @@
 {
-  "name": "Tiktok Downloader",
-  "short_name": "Tikdw",
-  "description": "Aplikasi downloader TikTok cepat, ringan, dan mudah digunakan untuk mengunduh video tanpa watermark.",
-  "start_url": "/",
+  "background_color": "#000000",
+  "dir": "ltr",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
-  "orientation": "portrait",
+  "name": "Tiktok Downloader",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "Tikdw",
+  "start_url": "/",
+  "theme_color": "#730d0d",
   "icons": [
     {
-      "src": "/icons/fc4e5294-a54d-46bb-9642-e8902cca0a54.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/fc4e5294-a54d-46bb-9642-e8902cca0a54.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "https://beckend-black.vercel.app/icons/icon-192.png",
+      "isSquare": false,
+      "isPng": true,
+      "isWebp": false,
+      "isJpg": false,
+      "width": 0,
+      "is512x512": false,
+      "is256x256": false,
+      "is192x192": false
     }
-  ]
+  ],
+  "id": "Aplikasi downloader TikTok cepat, ringan, dan mudah digunakan untuk mengunduh video tanpa watermark",
+  "description": "Gunakan aplikasi ini untuk mengunduh video atau foto di tiktok tanpa watermark"
 }
