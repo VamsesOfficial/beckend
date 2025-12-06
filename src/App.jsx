@@ -192,7 +192,7 @@ export default function TikTokDownloader() {
     setIndex(0);
 
     try {
-      const apiUrl = `https://your-api-endpoint.com/api/tiktok?url=${encodeURIComponent(url)}`;
+      const apiUrl = `https://beckend-black.vercel.app/api/tiktok?url=${encodeURIComponent(url)}`;
       const res = await fetch(apiUrl);
       const json = await res.json();
 
@@ -564,4 +564,5 @@ export default function TikTokDownloader() {
       </div>
     </div>
   );
+
 }
