@@ -1,5 +1,18 @@
+// File: src/App.jsx
+// UPDATE BAGIAN fetchData SAJA, sisanya tetap sama
+
 import React, { useState, useEffect, useRef } from "react";
 import { Download, Video, Loader2, AlertCircle, Music, Share2, Instagram, Mail, Code } from "lucide-react";
+
+// ========================
+// 🔑 API CONFIGURATION
+// ========================
+// PENTING: Simpan API_KEY ini di .env untuk production!
+// File .env: VITE_API_KEY=rahasia-anda-12345
+// Lalu ganti baris ini dengan: const API_KEY = import.meta.env.VITE_API_KEY;
+
+const API_KEY = "rahasia-anda-12345"; // Ganti dengan API key yang sama di Vercel
+const API_URL = "https://beckend-black.vercel.app/api/tiktok";
 
 export default function TikTokDownloader() {
   // ============================
@@ -174,7 +187,7 @@ export default function TikTokDownloader() {
   };
 
   // ============================
-  //  FETCH DATA
+  //  🔒 FETCH DATA (UPDATED WITH API KEY)
   // ============================
   const fetchData = async () => {
     if (!url.trim()) {
@@ -192,26 +205,41 @@ export default function TikTokDownloader() {
     setIndex(0);
 
     try {
-      const apiUrl = `https://beckend-black.vercel.app/api/tiktok?url=${encodeURIComponent(url)}`;
-      const res = await fetch(apiUrl);
+      // 🔑 KIRIM REQUEST DENGAN API KEY
+      const res = await fetch(`${API_URL}?url=${encodeURIComponent(url)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY  // 👈 INI YANG PENTING!
+        }
+      });
+
       const json = await res.json();
 
+      // Handle error dari API
+      if (!res.ok) {
+        setError(json.message || "Gagal mengambil data dari API");
+        setLoading(false);
+        return;
+      }
+
       if (json.code !== 0) {
-        setError(json.msg || "API Error.");
+        setError(json.msg || json.message || "API Error.");
         setLoading(false);
         return;
       }
 
       setResult(json.data);
     } catch (err) {
-      setError("Gagal terhubung ke server. Pastikan API endpoint sudah benar.");
+      console.error("Fetch Error:", err);
+      setError("Gagal terhubung ke server. Pastikan koneksi internet Anda stabil.");
     }
 
     setLoading(false);
   };
 
   // ============================
-  //  RENDER
+  //  RENDER (SISANYA SAMA PERSIS)
   // ============================
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-800 to-red-900 p-4">
@@ -564,5 +592,4 @@ export default function TikTokDownloader() {
       </div>
     </div>
   );
-
-}
+                }
