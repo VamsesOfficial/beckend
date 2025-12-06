@@ -210,7 +210,7 @@ export default function TikTokDownloader() {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': API_KEY  // 👈 INI YANG PENTING!
+          'x-api-key': celakgede  // 👈 INI YANG PENTING!
         }
       });
 
@@ -593,3 +593,4 @@ export default function TikTokDownloader() {
     </div>
   );
                 }
+
