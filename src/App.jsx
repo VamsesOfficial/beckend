@@ -11,7 +11,7 @@ import { Download, Video, Loader2, AlertCircle, Music, Share2, Instagram, Mail, 
 // File .env: VITE_API_KEY=rahasia-anda-12345
 // Lalu ganti baris ini dengan: const API_KEY = import.meta.env.VITE_API_KEY;
 
-const API_KEY = "rahasia-anda-12345"; // Ganti dengan API key yang sama di Vercel
+const API_KEY = "celakgede"; // Ganti dengan API key yang sama di Vercel
 const API_URL = "https://beckend-black.vercel.app/api/tiktok";
 
 export default function TikTokDownloader() {
@@ -210,7 +210,7 @@ export default function TikTokDownloader() {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': celakgede  // 👈 INI YANG PENTING!
+          'x-api-key': API_KEY  // 👈 INI YANG PENTING!
         }
       });
 
@@ -593,4 +593,5 @@ export default function TikTokDownloader() {
     </div>
   );
                 }
+
 
