@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   // ========================
   // 🔒 SECURITY CHECK - API KEY
   // ========================
-  const apiKey = req.headers['celakgede'];
+  const apiKey = req.headers['x-api-key'];
   
   if (!apiKey) {
     return res.status(401).json({
