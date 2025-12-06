@@ -4,14 +4,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Download, Video, Loader2, AlertCircle, Music, Share2, Instagram, Mail, Code } from "lucide-react";
 
-// ========================
-// 🔑 API CONFIGURATION
-// ========================
-// PENTING: Simpan API_KEY ini di .env untuk production!
-// File .env: VITE_API_KEY=rahasia-anda-12345
-// Lalu ganti baris ini dengan: const API_KEY = import.meta.env.VITE_API_KEY;
-
-const API_KEY = "celakgede"; // Ganti dengan API key yang sama di Vercel
 const API_URL = "https://beckend-black.vercel.app/api/tiktok";
 
 export default function TikTokDownloader() {
@@ -205,15 +197,9 @@ export default function TikTokDownloader() {
     setIndex(0);
 
     try {
-      // 🔑 KIRIM REQUEST DENGAN API KEY
-      const res = await fetch(`${API_URL}?url=${encodeURIComponent(url)}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': API_KEY  // 👈 INI YANG PENTING!
-        }
-      });
-
+      // 🎉 FETCH BIASA - TANPA HEADER API KEY!
+      const res = await fetch(`${API_URL}?url=${encodeURIComponent(url)}`);
+      
       const json = await res.json();
 
       // Handle error dari API
@@ -592,6 +578,4 @@ export default function TikTokDownloader() {
       </div>
     </div>
   );
-                }
-
-
+}
