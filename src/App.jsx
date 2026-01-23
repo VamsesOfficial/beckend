@@ -1,7 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit2, Trash2, DollarSign, Users, AlertCircle, FileText, Settings, Menu, X, Download, Printer } from 'lucide-react';
 
-// Data dummy untuk demo
+// XSS Protection Helper
+const sanitizeInput = (input) => {
+  if (typeof input !== 'string') return input;
+  const div = document.createElement('div');
+  div.textContent = input;
+  return div.innerHTML;
+};
+
+const sanitizeObject = (obj) => {
+  const sanitized = {};
+  for (let key in obj) {
+    if (typeof obj[key] === 'string') {
+      sanitized[key] = sanitizeInput(obj[key]);
+    } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+      sanitized[key] = sanitizeObject(obj[key]);
+    } else {
+      sanitized[key] = obj[key];
+    }
+  }
+  return sanitized;
+};
+
 const initialData = {
   admin: { username: 'admin', password: 'admin123', name: 'Pak Budi' },
   customers: [
@@ -15,7 +36,7 @@ const initialData = {
     { id: 2, customerId: 3, customerName: 'Budi Santoso', month: '2025-01', amount: 150000, date: '2025-01-12', method: 'transfer', admin: 'Pak Budi' },
   ],
   settings: {
-    businessName: 'RT/RW Net Makmur',
+    businessName: 'DEMO',
     address: 'RT 05 / RW 03, Kelurahan Sukamaju',
     phone: '08123456789',
     packages: [
@@ -27,11 +48,31 @@ const initialData = {
 };
 
 export default function RTRWNetAdmin() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentPage, setCurrentPage] = useState('login');
-  const [customers, setCustomers] = useState(initialData.customers);
-  const [payments, setPayments] = useState(initialData.payments);
-  const [settings, setSettings] = useState(initialData.settings);
+  // Load data dari storage dengan fallback ke initialData
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    const saved = window.localStorage.getItem('rtrwnet_isLoggedIn');
+    return saved === 'true';
+  });
+  
+  const [currentPage, setCurrentPage] = useState(() => {
+    return window.localStorage.getItem('rtrwnet_currentPage') || 'login';
+  });
+  
+  const [customers, setCustomers] = useState(() => {
+    const saved = window.localStorage.getItem('rtrwnet_customers');
+    return saved ? JSON.parse(saved) : initialData.customers;
+  });
+  
+  const [payments, setPayments] = useState(() => {
+    const saved = window.localStorage.getItem('rtrwnet_payments');
+    return saved ? JSON.parse(saved) : initialData.payments;
+  });
+  
+  const [settings, setSettings] = useState(() => {
+    const saved = window.localStorage.getItem('rtrwnet_settings');
+    return saved ? JSON.parse(saved) : initialData.settings;
+  });
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [editingCustomer, setEditingCustomer] = useState(null);
@@ -39,14 +80,35 @@ export default function RTRWNetAdmin() {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [paymentForm, setPaymentForm] = useState({ month: '', method: 'cash' });
   const [filterMonth, setFilterMonth] = useState('2025-01');
-  const [showReminderModal, setShowReminderModal] = useState(false);
-  const [reminderCustomer, setReminderCustomer] = useState(null);
-  const [reminderMessage, setReminderMessage] = useState('');
 
-  // Login handler
+  // Auto-save ke localStorage setiap ada perubahan
+  useEffect(() => {
+    window.localStorage.setItem('rtrwnet_isLoggedIn', isLoggedIn);
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    window.localStorage.setItem('rtrwnet_currentPage', currentPage);
+  }, [currentPage]);
+
+  useEffect(() => {
+    window.localStorage.setItem('rtrwnet_customers', JSON.stringify(customers));
+  }, [customers]);
+
+  useEffect(() => {
+    window.localStorage.setItem('rtrwnet_payments', JSON.stringify(payments));
+  }, [payments]);
+
+  useEffect(() => {
+    window.localStorage.setItem('rtrwnet_settings', JSON.stringify(settings));
+  }, [settings]);
+
+  // Login handler dengan XSS protection
   const handleLogin = (e) => {
     e.preventDefault();
-    if (loginForm.username === initialData.admin.username && loginForm.password === initialData.admin.password) {
+    const sanitizedUsername = sanitizeInput(loginForm.username);
+    const sanitizedPassword = sanitizeInput(loginForm.password);
+    
+    if (sanitizedUsername === initialData.admin.username && sanitizedPassword === initialData.admin.password) {
       setIsLoggedIn(true);
       setCurrentPage('dashboard');
     } else {
@@ -60,12 +122,14 @@ export default function RTRWNetAdmin() {
   const totalIncome = payments.filter(p => p.month === currentMonth).reduce((sum, p) => sum + p.amount, 0);
   const unpaidCustomers = customers.filter(c => c.lastPayment !== currentMonth);
 
-  // Customer operations
+  // Customer operations dengan XSS protection
   const handleSaveCustomer = (customer) => {
-    if (customer.id) {
-      setCustomers(customers.map(c => c.id === customer.id ? customer : c));
+    const sanitizedCustomer = sanitizeObject(customer);
+    
+    if (sanitizedCustomer.id) {
+      setCustomers(customers.map(c => c.id === sanitizedCustomer.id ? sanitizedCustomer : c));
     } else {
-      setCustomers([...customers, { ...customer, id: Date.now(), status: 'active', lastPayment: '' }]);
+      setCustomers([...customers, { ...sanitizedCustomer, id: Date.now(), status: 'active', lastPayment: '' }]);
     }
     setCurrentPage('pelanggan');
     setEditingCustomer(null);
@@ -84,7 +148,7 @@ export default function RTRWNetAdmin() {
       return;
     }
     
-    const newPayment = {
+    const newPayment = sanitizeObject({
       id: Date.now(),
       customerId: selectedCustomer.id,
       customerName: selectedCustomer.name,
@@ -93,7 +157,7 @@ export default function RTRWNetAdmin() {
       date: new Date().toISOString().split('T')[0],
       method: paymentForm.method,
       admin: initialData.admin.name
-    };
+    });
     
     setPayments([...payments, newPayment]);
     setCustomers(customers.map(c => 
@@ -105,10 +169,11 @@ export default function RTRWNetAdmin() {
     setPaymentForm({ month: '', method: 'cash' });
   };
 
-  // Filter customers
+  // Filter customers dengan XSS protection
+  const sanitizedSearchTerm = sanitizeInput(searchTerm);
   const filteredCustomers = customers.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.phone.includes(searchTerm)
+    c.name.toLowerCase().includes(sanitizedSearchTerm.toLowerCase()) ||
+    c.phone.includes(sanitizedSearchTerm)
   );
 
   // Get overdue customers
@@ -119,73 +184,11 @@ export default function RTRWNetAdmin() {
     return lastYear < year || (lastYear === year && lastMonth < month);
   });
 
-  // Send reminder function
-  const handleSendReminder = (customer) => {
-    setReminderCustomer(customer);
-    const monthsOverdue = customer.lastPayment ? 
-      (parseInt(currentMonth.split('-')[1]) - parseInt(customer.lastPayment.split('-')[1])) : 1;
-    
-    const defaultMessage = `Halo Bapak/Ibu *${customer.name}*,
-
-Ini adalah pengingat pembayaran internet ${settings.businessName}.
-
-📋 *Detail Tagihan:*
-• Paket: ${customer.package}
-• Biaya: Rp ${customer.price.toLocaleString('id-ID')}
-• Tunggakan: ${monthsOverdue} bulan
-• Total: Rp ${(customer.price * monthsOverdue).toLocaleString('id-ID')}
-
-💳 *Pembayaran bisa ditransfer ke:*
-BCA 1234567890 a.n. ${settings.businessName}
-
-Atau bisa bayar langsung ke rumah.
-
-Terima kasih atas perhatiannya! 🙏`;
-    
-    setReminderMessage(defaultMessage);
-    setShowReminderModal(true);
-  };
-
-  const sendWhatsAppReminder = () => {
-    if (!reminderCustomer) return;
-    
-    // Clean phone number (remove +, spaces, dashes)
-    let phoneNumber = reminderCustomer.phone.replace(/[^0-9]/g, '');
-    
-    // Add country code if not present
-    if (phoneNumber.startsWith('0')) {
-      phoneNumber = '62' + phoneNumber.substring(1);
-    } else if (!phoneNumber.startsWith('62')) {
-      phoneNumber = '62' + phoneNumber;
-    }
-    
-    // Encode message for URL
-    const encodedMessage = encodeURIComponent(reminderMessage);
-    
-    // Open WhatsApp with pre-filled message
-    const waUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
-    window.open(waUrl, '_blank');
-    
-    setShowReminderModal(false);
-    alert(`Reminder berhasil dikirim ke ${reminderCustomer.name}!`);
-  };
-
-  const sendBulkReminder = () => {
-    if (overdueCustomers.length === 0) {
-      alert('Tidak ada pelanggan yang perlu diingatkan!');
-      return;
-    }
-    
-    if (!confirm(`Kirim reminder ke ${overdueCustomers.length} pelanggan?`)) {
-      return;
-    }
-    
-    // Send to each customer with delay
-    overdueCustomers.forEach((customer, index) => {
-      setTimeout(() => {
-        handleSendReminder(customer);
-      }, index * 2000); // 2 second delay between each message
-    });
+  // Logout handler
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentPage('login');
+    setShowMobileMenu(false);
   };
 
   // Navigation component
@@ -205,7 +208,7 @@ Terima kasih atas perhatiannya! 🙏`;
               <li><button onClick={() => { setCurrentPage('laporan'); setShowMobileMenu(false); }} className="hover:text-blue-200 w-full text-left md:w-auto">Laporan</button></li>
               <li><button onClick={() => { setCurrentPage('tunggakan'); setShowMobileMenu(false); }} className="hover:text-blue-200 w-full text-left md:w-auto">Tunggakan</button></li>
               <li><button onClick={() => { setCurrentPage('pengaturan'); setShowMobileMenu(false); }} className="hover:text-blue-200 w-full text-left md:w-auto">Pengaturan</button></li>
-              <li><button onClick={() => { setIsLoggedIn(false); setCurrentPage('login'); setShowMobileMenu(false); }} className="hover:text-blue-200 text-red-200 w-full text-left md:w-auto">Logout</button></li>
+              <li><button onClick={handleLogout} className="hover:text-blue-200 text-red-200 w-full text-left md:w-auto">Logout</button></li>
             </ul>
           </nav>
         </div>
@@ -255,52 +258,6 @@ Terima kasih atas perhatiannya! 🙏`;
   return (
     <div className="min-h-screen bg-gray-100">
       <Navigation />
-      
-      {/* Reminder Modal */}
-      {showReminderModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b">
-              <h3 className="text-xl font-bold">Kirim Reminder WhatsApp</h3>
-              <p className="text-sm text-gray-600 mt-1">Ke: {reminderCustomer?.name} ({reminderCustomer?.phone})</p>
-            </div>
-            
-            <div className="p-6">
-              <label className="block text-sm font-medium mb-2">Pesan Reminder:</label>
-              <textarea
-                value={reminderMessage}
-                onChange={(e) => setReminderMessage(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                rows="15"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                💡 Tips: Gunakan *teks* untuk bold, _teks_ untuk italic
-              </p>
-            </div>
-            
-            <div className="p-6 border-t flex gap-2">
-              <button
-                onClick={sendWhatsAppReminder}
-                className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 font-medium flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                </svg>
-                Kirim via WhatsApp
-              </button>
-              <button
-                onClick={() => {
-                  setShowReminderModal(false);
-                  setReminderCustomer(null);
-                }}
-                className="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-              >
-                Batal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       
       <div className="container mx-auto px-4 py-6">
         {/* Dashboard */}
@@ -723,20 +680,7 @@ Terima kasih atas perhatiannya! 🙏`;
         {/* Tunggakan */}
         {currentPage === 'tunggakan' && (
           <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Daftar Tunggakan</h2>
-              {overdueCustomers.length > 0 && (
-                <button
-                  onClick={sendBulkReminder}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                  </svg>
-                  Kirim Semua Reminder
-                </button>
-              )}
-            </div>
+            <h2 className="text-2xl font-bold mb-6">Daftar Tunggakan</h2>
             
             {overdueCustomers.length === 0 ? (
               <div className="bg-white rounded-lg shadow p-8 text-center">
@@ -757,7 +701,6 @@ Terima kasih atas perhatiannya! 🙏`;
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">No HP</th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Paket</th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Tunggakan</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Total Tagihan</th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Bayar Terakhir</th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Aksi</th>
                       </tr>
@@ -776,19 +719,13 @@ Terima kasih atas perhatiannya! 🙏`;
                                 {monthsOverdue} bulan
                               </span>
                             </td>
-                            <td className="px-4 py-3 font-bold text-red-600">
-                              Rp {(customer.price * monthsOverdue).toLocaleString('id-ID')}
-                            </td>
                             <td className="px-4 py-3">{customer.lastPayment || 'Belum pernah'}</td>
                             <td className="px-4 py-3">
                               <button
-                                onClick={() => handleSendReminder(customer)}
-                                className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm flex items-center gap-1"
+                                onClick={() => alert(`Kirim reminder ke ${customer.name} (${customer.phone})\n\nFitur WhatsApp/SMS akan segera hadir!`)}
+                                className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm"
                               >
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                                </svg>
-                                Kirim WA
+                                Kirim Reminder
                               </button>
                             </td>
                           </tr>
@@ -809,13 +746,16 @@ Terima kasih atas perhatiannya! 🙏`;
             
             <div className="bg-white rounded-lg shadow p-6 mb-6">
               <h3 className="text-lg font-bold mb-4">Data Usaha</h3>
-              <form className="space-y-4">
+              <form className="space-y-4" onSubmit={(e) => {
+                e.preventDefault();
+                alert('Pengaturan berhasil disimpan!');
+              }}>
                 <div>
                   <label className="block text-sm font-medium mb-1">Nama Usaha</label>
                   <input
                     type="text"
                     value={settings.businessName}
-                    onChange={(e) => setSettings({ ...settings, businessName: e.target.value })}
+                    onChange={(e) => setSettings({ ...settings, businessName: sanitizeInput(e.target.value) })}
                     className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -824,7 +764,7 @@ Terima kasih atas perhatiannya! 🙏`;
                   <input
                     type="text"
                     value={settings.address}
-                    onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+                    onChange={(e) => setSettings({ ...settings, address: sanitizeInput(e.target.value) })}
                     className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -833,11 +773,11 @@ Terima kasih atas perhatiannya! 🙏`;
                   <input
                     type="text"
                     value={settings.phone}
-                    onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
+                    onChange={(e) => setSettings({ ...settings, phone: sanitizeInput(e.target.value) })}
                     className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <button type="button" className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
                   Simpan
                 </button>
               </form>
@@ -855,19 +795,35 @@ Terima kasih atas perhatiannya! 🙏`;
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-6 mb-6">
               <h3 className="text-lg font-bold mb-4">Akun Admin</h3>
               <div className="space-y-2">
                 <p><span className="text-gray-600">Username:</span> <span className="font-medium">{initialData.admin.username}</span></p>
                 <p><span className="text-gray-600">Nama:</span> <span className="font-medium">{initialData.admin.name}</span></p>
-                <button type="button" className="mt-4 bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700">
+                <button type="button" onClick={() => alert('Fitur ganti password akan segera hadir!')} className="mt-4 bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700">
                   Ganti Password
                 </button>
               </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-bold mb-4 text-red-600">Reset Data</h3>
+              <p className="text-gray-600 mb-4">Hapus semua data dan kembalikan ke pengaturan awal. Tindakan ini tidak dapat dibatalkan!</p>
+              <button 
+                onClick={() => {
+                  if (confirm('PERHATIAN: Semua data akan dihapus!\n\nYakin ingin reset semua data?')) {
+                    window.localStorage.clear();
+                    window.location.reload();
+                  }
+                }}
+                className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700"
+              >
+                Reset Semua Data
+              </button>
             </div>
           </div>
         )}
       </div>
     </div>
   );
-            }
+                  }
