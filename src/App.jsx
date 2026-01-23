@@ -23,7 +23,7 @@ const sanitizeObject = (obj) => {
   return sanitized;
 };
 
-export default function generateDemoData(totalCustomers = 500) {
+const generateDemoCustomers = (total = 500) => {
   const packages = [
     { name: 'Paket A - 20 Mbps', price: 150000 },
     { name: 'Paket B - 30 Mbps', price: 200000 },
@@ -33,7 +33,7 @@ export default function generateDemoData(totalCustomers = 500) {
   const customers = [];
   const payments = [];
 
-  for (let i = 1; i <= totalCustomers; i++) {
+  for (let i = 1; i <= total; i++) {
     const pkg = packages[i % packages.length];
     const dueDate = [5, 10, 15, 20, 25][i % 5];
 
@@ -46,10 +46,9 @@ export default function generateDemoData(totalCustomers = 500) {
       price: pkg.price,
       dueDate,
       status: 'active',
-      lastPayment: '2025-01'
+      lastPayment: i % 3 === 0 ? '2024-12' : '2025-01'
     });
 
-    // contoh 60% pelanggan sudah bayar
     if (i % 3 !== 0) {
       payments.push({
         id: payments.length + 1,
@@ -64,20 +63,26 @@ export default function generateDemoData(totalCustomers = 500) {
     }
   }
 
-  return {
-    admin: { username: 'admin', password: 'admin123', name: 'Pak Budi' },
-    customers,
-    payments,
-    settings: {
-      businessName: 'DEMO',
-      address: 'RT 05 / RW 03, Kelurahan Sukamaju',
-      phone: '08123456789',
-      packages
-    }
-  };
-}
+  return { customers, payments };
+};
 
-const initialData = generateDemoData(500);
+const demoData = generateDemoCustomers(500);
+
+const initialData = {
+  admin: { username: 'admin', password: 'admin123', name: 'Pak Budi' },
+  customers: demoData.customers,
+  payments: demoData.payments,
+  settings: {
+    businessName: 'RT/RW Net Makmur',
+    address: 'RT 05 / RW 03, Kelurahan Sukamaju',
+    phone: '08123456789',
+    packages: [
+      { name: 'Paket A - 20 Mbps', price: 150000 },
+      { name: 'Paket B - 30 Mbps', price: 200000 },
+      { name: 'Paket C - 50 Mbps', price: 300000 },
+    ]
+  }
+};
 
 export default function RTRWNetAdmin() {
   // Load data dari storage dengan fallback ke initialData
@@ -858,4 +863,4 @@ export default function RTRWNetAdmin() {
       </div>
     </div>
   );
-    }
+              }
