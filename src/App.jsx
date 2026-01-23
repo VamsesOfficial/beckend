@@ -1,77 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit2, Trash2, DollarSign, Users, AlertCircle, FileText, Settings, Menu, X, Download, Printer } from 'lucide-react';
 
-// XSS Protection Helper
-const sanitizeInput = (input) => {
-  if (typeof input !== 'string') return input;
-  const div = document.createElement('div');
-  div.textContent = input;
-  return div.innerHTML;
-};
-
-const sanitizeObject = (obj) => {
-  const sanitized = {};
-  for (let key in obj) {
-    if (typeof obj[key] === 'string') {
-      sanitized[key] = sanitizeInput(obj[key]);
-    } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-      sanitized[key] = sanitizeObject(obj[key]);
-    } else {
-      sanitized[key] = obj[key];
-    }
-  }
-  return sanitized;
-};
-
-const generateDemoCustomers = (total = 500) => {
-  const packages = [
-    { name: 'Paket A - 20 Mbps', price: 150000 },
-    { name: 'Paket B - 30 Mbps', price: 200000 },
-    { name: 'Paket C - 50 Mbps', price: 300000 },
-  ];
-
-  const customers = [];
-  const payments = [];
-
-  for (let i = 1; i <= total; i++) {
-    const pkg = packages[i % packages.length];
-    const dueDate = [5, 10, 15, 20, 25][i % 5];
-
-    customers.push({
-      id: i,
-      name: `Pelanggan ${i}`,
-      phone: `08${Math.floor(100000000 + Math.random() * 899999999)}`,
-      address: `RT 0${(i % 5) + 1} / RW 0${(i % 3) + 1}`,
-      package: pkg.name,
-      price: pkg.price,
-      dueDate,
-      status: 'active',
-      lastPayment: i % 3 === 0 ? '2024-12' : '2025-01'
-    });
-
-    if (i % 3 !== 0) {
-      payments.push({
-        id: payments.length + 1,
-        customerId: i,
-        customerName: `Pelanggan ${i}`,
-        month: '2025-01',
-        amount: pkg.price,
-        date: `2025-01-${String(dueDate).padStart(2, '0')}`,
-        method: i % 2 === 0 ? 'cash' : 'transfer',
-        admin: 'Pak Budi'
-      });
-    }
-  }
-
-  return { customers, payments };
-};
-
-const demoData = generateDemoCustomers(500);
-
+// Data dummy untuk demo
 const initialData = {
   admin: { username: 'admin', password: 'admin123', name: 'Pak Budi' },
-  customers: demoData.customers,
-  payments: demoData.payments,
+  customers: [
+    { id: 1, name: 'Ahmad Subagyo', phone: '08123456789', address: 'Jl. Mawar No. 12', package: 'Paket A - 20 Mbps', price: 150000, dueDate: 10, status: 'active', lastPayment: '2025-01' },
+    { id: 2, name: 'Siti Nurhaliza', phone: '08234567890', address: 'Jl. Melati No. 5', package: 'Paket B - 30 Mbps', price: 200000, dueDate: 15, status: 'active', lastPayment: '2024-12' },
+    { id: 3, name: 'Budi Santoso', phone: '08345678901', address: 'Jl. Kenanga No. 8', package: 'Paket A - 20 Mbps', price: 150000, dueDate: 10, status: 'active', lastPayment: '2025-01' },
+    { id: 4, name: 'Dewi Lestari', phone: '08456789012', address: 'Jl. Anggrek No. 3', package: 'Paket C - 50 Mbps', price: 300000, dueDate: 20, status: 'active', lastPayment: '2024-11' },
+  ],
+  payments: [
+    { id: 1, customerId: 1, customerName: 'Ahmad Subagyo', month: '2025-01', amount: 150000, date: '2025-01-10', method: 'cash', admin: 'Pak Budi' },
+    { id: 2, customerId: 3, customerName: 'Budi Santoso', month: '2025-01', amount: 150000, date: '2025-01-12', method: 'transfer', admin: 'Pak Budi' },
+  ],
   settings: {
     businessName: 'RT/RW Net Makmur',
     address: 'RT 05 / RW 03, Kelurahan Sukamaju',
@@ -85,31 +27,11 @@ const initialData = {
 };
 
 export default function RTRWNetAdmin() {
-  // Load data dari storage dengan fallback ke initialData
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    const saved = window.localStorage.getItem('rtrwnet_isLoggedIn');
-    return saved === 'true';
-  });
-  
-  const [currentPage, setCurrentPage] = useState(() => {
-    return window.localStorage.getItem('rtrwnet_currentPage') || 'login';
-  });
-  
-  const [customers, setCustomers] = useState(() => {
-    const saved = window.localStorage.getItem('rtrwnet_customers');
-    return saved ? JSON.parse(saved) : initialData.customers;
-  });
-  
-  const [payments, setPayments] = useState(() => {
-    const saved = window.localStorage.getItem('rtrwnet_payments');
-    return saved ? JSON.parse(saved) : initialData.payments;
-  });
-  
-  const [settings, setSettings] = useState(() => {
-    const saved = window.localStorage.getItem('rtrwnet_settings');
-    return saved ? JSON.parse(saved) : initialData.settings;
-  });
-
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentPage, setCurrentPage] = useState('login');
+  const [customers, setCustomers] = useState(initialData.customers);
+  const [payments, setPayments] = useState(initialData.payments);
+  const [settings, setSettings] = useState(initialData.settings);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [editingCustomer, setEditingCustomer] = useState(null);
@@ -118,34 +40,10 @@ export default function RTRWNetAdmin() {
   const [paymentForm, setPaymentForm] = useState({ month: '', method: 'cash' });
   const [filterMonth, setFilterMonth] = useState('2025-01');
 
-  // Auto-save ke localStorage setiap ada perubahan
-  useEffect(() => {
-    window.localStorage.setItem('rtrwnet_isLoggedIn', isLoggedIn);
-  }, [isLoggedIn]);
-
-  useEffect(() => {
-    window.localStorage.setItem('rtrwnet_currentPage', currentPage);
-  }, [currentPage]);
-
-  useEffect(() => {
-    window.localStorage.setItem('rtrwnet_customers', JSON.stringify(customers));
-  }, [customers]);
-
-  useEffect(() => {
-    window.localStorage.setItem('rtrwnet_payments', JSON.stringify(payments));
-  }, [payments]);
-
-  useEffect(() => {
-    window.localStorage.setItem('rtrwnet_settings', JSON.stringify(settings));
-  }, [settings]);
-
-  // Login handler dengan XSS protection
+  // Login handler
   const handleLogin = (e) => {
     e.preventDefault();
-    const sanitizedUsername = sanitizeInput(loginForm.username);
-    const sanitizedPassword = sanitizeInput(loginForm.password);
-    
-    if (sanitizedUsername === initialData.admin.username && sanitizedPassword === initialData.admin.password) {
+    if (loginForm.username === initialData.admin.username && loginForm.password === initialData.admin.password) {
       setIsLoggedIn(true);
       setCurrentPage('dashboard');
     } else {
@@ -159,14 +57,12 @@ export default function RTRWNetAdmin() {
   const totalIncome = payments.filter(p => p.month === currentMonth).reduce((sum, p) => sum + p.amount, 0);
   const unpaidCustomers = customers.filter(c => c.lastPayment !== currentMonth);
 
-  // Customer operations dengan XSS protection
+  // Customer operations
   const handleSaveCustomer = (customer) => {
-    const sanitizedCustomer = sanitizeObject(customer);
-    
-    if (sanitizedCustomer.id) {
-      setCustomers(customers.map(c => c.id === sanitizedCustomer.id ? sanitizedCustomer : c));
+    if (customer.id) {
+      setCustomers(customers.map(c => c.id === customer.id ? customer : c));
     } else {
-      setCustomers([...customers, { ...sanitizedCustomer, id: Date.now(), status: 'active', lastPayment: '' }]);
+      setCustomers([...customers, { ...customer, id: Date.now(), status: 'active', lastPayment: '' }]);
     }
     setCurrentPage('pelanggan');
     setEditingCustomer(null);
@@ -185,7 +81,7 @@ export default function RTRWNetAdmin() {
       return;
     }
     
-    const newPayment = sanitizeObject({
+    const newPayment = {
       id: Date.now(),
       customerId: selectedCustomer.id,
       customerName: selectedCustomer.name,
@@ -194,7 +90,7 @@ export default function RTRWNetAdmin() {
       date: new Date().toISOString().split('T')[0],
       method: paymentForm.method,
       admin: initialData.admin.name
-    });
+    };
     
     setPayments([...payments, newPayment]);
     setCustomers(customers.map(c => 
@@ -206,11 +102,10 @@ export default function RTRWNetAdmin() {
     setPaymentForm({ month: '', method: 'cash' });
   };
 
-  // Filter customers dengan XSS protection
-  const sanitizedSearchTerm = sanitizeInput(searchTerm);
+  // Filter customers
   const filteredCustomers = customers.filter(c => 
-    c.name.toLowerCase().includes(sanitizedSearchTerm.toLowerCase()) ||
-    c.phone.includes(sanitizedSearchTerm)
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.phone.includes(searchTerm)
   );
 
   // Get overdue customers
@@ -220,13 +115,6 @@ export default function RTRWNetAdmin() {
     const [lastYear, lastMonth] = c.lastPayment.split('-');
     return lastYear < year || (lastYear === year && lastMonth < month);
   });
-
-  // Logout handler
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setCurrentPage('login');
-    setShowMobileMenu(false);
-  };
 
   // Navigation component
   const Navigation = () => (
@@ -245,7 +133,7 @@ export default function RTRWNetAdmin() {
               <li><button onClick={() => { setCurrentPage('laporan'); setShowMobileMenu(false); }} className="hover:text-blue-200 w-full text-left md:w-auto">Laporan</button></li>
               <li><button onClick={() => { setCurrentPage('tunggakan'); setShowMobileMenu(false); }} className="hover:text-blue-200 w-full text-left md:w-auto">Tunggakan</button></li>
               <li><button onClick={() => { setCurrentPage('pengaturan'); setShowMobileMenu(false); }} className="hover:text-blue-200 w-full text-left md:w-auto">Pengaturan</button></li>
-              <li><button onClick={handleLogout} className="hover:text-blue-200 text-red-200 w-full text-left md:w-auto">Logout</button></li>
+              <li><button onClick={() => { setIsLoggedIn(false); setCurrentPage('login'); setShowMobileMenu(false); }} className="hover:text-blue-200 text-red-200 w-full text-left md:w-auto">Logout</button></li>
             </ul>
           </nav>
         </div>
@@ -783,16 +671,13 @@ export default function RTRWNetAdmin() {
             
             <div className="bg-white rounded-lg shadow p-6 mb-6">
               <h3 className="text-lg font-bold mb-4">Data Usaha</h3>
-              <form className="space-y-4" onSubmit={(e) => {
-                e.preventDefault();
-                alert('Pengaturan berhasil disimpan!');
-              }}>
+              <form className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Nama Usaha</label>
                   <input
                     type="text"
                     value={settings.businessName}
-                    onChange={(e) => setSettings({ ...settings, businessName: sanitizeInput(e.target.value) })}
+                    onChange={(e) => setSettings({ ...settings, businessName: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -801,7 +686,7 @@ export default function RTRWNetAdmin() {
                   <input
                     type="text"
                     value={settings.address}
-                    onChange={(e) => setSettings({ ...settings, address: sanitizeInput(e.target.value) })}
+                    onChange={(e) => setSettings({ ...settings, address: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -810,11 +695,11 @@ export default function RTRWNetAdmin() {
                   <input
                     type="text"
                     value={settings.phone}
-                    onChange={(e) => setSettings({ ...settings, phone: sanitizeInput(e.target.value) })}
+                    onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
                     className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                <button type="button" className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
                   Simpan
                 </button>
               </form>
@@ -832,35 +717,19 @@ export default function RTRWNetAdmin() {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-bold mb-4">Akun Admin</h3>
               <div className="space-y-2">
                 <p><span className="text-gray-600">Username:</span> <span className="font-medium">{initialData.admin.username}</span></p>
                 <p><span className="text-gray-600">Nama:</span> <span className="font-medium">{initialData.admin.name}</span></p>
-                <button type="button" onClick={() => alert('Fitur ganti password akan segera hadir!')} className="mt-4 bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700">
+                <button type="button" className="mt-4 bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700">
                   Ganti Password
                 </button>
               </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-bold mb-4 text-red-600">Reset Data</h3>
-              <p className="text-gray-600 mb-4">Hapus semua data dan kembalikan ke pengaturan awal. Tindakan ini tidak dapat dibatalkan!</p>
-              <button 
-                onClick={() => {
-                  if (confirm('PERHATIAN: Semua data akan dihapus!\n\nYakin ingin reset semua data?')) {
-                    window.localStorage.clear();
-                    window.location.reload();
-                  }
-                }}
-                className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700"
-              >
-                Reset Semua Data
-              </button>
             </div>
           </div>
         )}
       </div>
     </div>
   );
-              }
+}
