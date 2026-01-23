@@ -117,7 +117,7 @@ export default function RTRWNetAdmin() {
   };
 
   // Calculate statistics
-  const currentMonth = '2025-01';
+  const currentMonth = new Date().toISOString().slice(0, 7); 
   const paidThisMonth = payments.filter(p => p.month === currentMonth).length;
   const totalIncome = payments.filter(p => p.month === currentMonth).reduce((sum, p) => sum + p.amount, 0);
   const unpaidCustomers = customers.filter(c => c.lastPayment !== currentMonth);
@@ -827,3 +827,4 @@ export default function RTRWNetAdmin() {
     </div>
   );
                   }
+
