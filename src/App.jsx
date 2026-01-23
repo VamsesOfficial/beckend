@@ -23,29 +23,61 @@ const sanitizeObject = (obj) => {
   return sanitized;
 };
 
-const initialData = {
-  admin: { username: 'admin', password: 'admin123', name: 'Pak Budi' },
-  customers: [
-    { id: 1, name: 'Ahmad Subagyo', phone: '08123456789', address: 'Jl. Mawar No. 12', package: 'Paket A - 20 Mbps', price: 150000, dueDate: 10, status: 'active', lastPayment: '2025-01' },
-    { id: 2, name: 'Siti Nurhaliza', phone: '08234567890', address: 'Jl. Melati No. 5', package: 'Paket B - 30 Mbps', price: 200000, dueDate: 15, status: 'active', lastPayment: '2024-12' },
-    { id: 3, name: 'Budi Santoso', phone: '08345678901', address: 'Jl. Kenanga No. 8', package: 'Paket A - 20 Mbps', price: 150000, dueDate: 10, status: 'active', lastPayment: '2025-01' },
-    { id: 4, name: 'Dewi Lestari', phone: '08456789012', address: 'Jl. Anggrek No. 3', package: 'Paket C - 50 Mbps', price: 300000, dueDate: 20, status: 'active', lastPayment: '2024-11' },
-  ],
-  payments: [
-    { id: 1, customerId: 1, customerName: 'Ahmad Subagyo', month: '2025-01', amount: 150000, date: '2025-01-10', method: 'cash', admin: 'Pak Budi' },
-    { id: 2, customerId: 3, customerName: 'Budi Santoso', month: '2025-01', amount: 150000, date: '2025-01-12', method: 'transfer', admin: 'Pak Budi' },
-  ],
-  settings: {
-    businessName: 'DEMO',
-    address: 'RT 05 / RW 03, Kelurahan Sukamaju',
-    phone: '08123456789',
-    packages: [
-      { name: 'Paket A - 20 Mbps', price: 150000 },
-      { name: 'Paket B - 30 Mbps', price: 200000 },
-      { name: 'Paket C - 50 Mbps', price: 300000 },
-    ]
+export default function generateDemoData(totalCustomers = 500) {
+  const packages = [
+    { name: 'Paket A - 20 Mbps', price: 150000 },
+    { name: 'Paket B - 30 Mbps', price: 200000 },
+    { name: 'Paket C - 50 Mbps', price: 300000 },
+  ];
+
+  const customers = [];
+  const payments = [];
+
+  for (let i = 1; i <= totalCustomers; i++) {
+    const pkg = packages[i % packages.length];
+    const dueDate = [5, 10, 15, 20, 25][i % 5];
+
+    customers.push({
+      id: i,
+      name: `Pelanggan ${i}`,
+      phone: `08${Math.floor(100000000 + Math.random() * 899999999)}`,
+      address: `RT 0${(i % 5) + 1} / RW 0${(i % 3) + 1}`,
+      package: pkg.name,
+      price: pkg.price,
+      dueDate,
+      status: 'active',
+      lastPayment: '2025-01'
+    });
+
+    // contoh 60% pelanggan sudah bayar
+    if (i % 3 !== 0) {
+      payments.push({
+        id: payments.length + 1,
+        customerId: i,
+        customerName: `Pelanggan ${i}`,
+        month: '2025-01',
+        amount: pkg.price,
+        date: `2025-01-${String(dueDate).padStart(2, '0')}`,
+        method: i % 2 === 0 ? 'cash' : 'transfer',
+        admin: 'Pak Budi'
+      });
+    }
   }
-};
+
+  return {
+    admin: { username: 'admin', password: 'admin123', name: 'Pak Budi' },
+    customers,
+    payments,
+    settings: {
+      businessName: 'DEMO',
+      address: 'RT 05 / RW 03, Kelurahan Sukamaju',
+      phone: '08123456789',
+      packages
+    }
+  };
+}
+
+const initialData = generateDemoData(500);
 
 export default function RTRWNetAdmin() {
   // Load data dari storage dengan fallback ke initialData
@@ -117,7 +149,7 @@ export default function RTRWNetAdmin() {
   };
 
   // Calculate statistics
-  const currentMonth = new Date().toISOString().slice(0, 7); 
+  const currentMonth = '2025-01';
   const paidThisMonth = payments.filter(p => p.month === currentMonth).length;
   const totalIncome = payments.filter(p => p.month === currentMonth).reduce((sum, p) => sum + p.amount, 0);
   const unpaidCustomers = customers.filter(c => c.lastPayment !== currentMonth);
@@ -826,5 +858,4 @@ export default function RTRWNetAdmin() {
       </div>
     </div>
   );
-                  }
-
+    }
